@@ -250,3 +250,4 @@ Outputs to `visual_samples/`:
 ## License
 
 This project was developed as part of a semiconductor inspection hackathon.
+"# semicon_final" 
