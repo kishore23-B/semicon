@@ -89,16 +89,19 @@ All data are single-channel (grayscale) float32 NumPy arrays (`.npy`).
 | Method | PSNR (dB) ↑ | SSIM ↑ | LPIPS ↓ |
 |--------|-------------|--------|---------|
 | Bicubic Baseline | 23.33 ± 3.59 | 0.5564 | 0.4528 |
-| **RestorationNet (Ours - v4)** | **28.37 ± 4.84** | **0.7736** | **0.2839** |
+| RestorationNet (Single-Pass) | 28.54 ± 4.89 | 0.7817 | 0.2553 |
+| **RestorationNet (+ 8-Fold D4 TTA)** | **28.63 ± 4.91** | **0.7840** | **0.2593** |
 
-> **Improvement over baseline**: +5.04 dB PSNR, +0.217 SSIM, −0.169 LPIPS
+> **Improvement over baseline**: +5.30 dB PSNR, +0.2276 SSIM, −0.1935 LPIPS
 
 ### Training Progression Across Phases
 
-* **Phase 1 (Epochs 1–10):** Initial training from scratch (patch=64, lr=1e-3) $\rightarrow$ **27.50 dB**
-* **Phase 2 (Epochs 11–21):** Larger patch fine-tuning (patch=96, lr=3e-4, $\lambda_{\text{ssim}}=0.25$) $\rightarrow$ **27.87 dB**
-* **Phase 3 (Epochs 22–36):** Edge-aware Sobel loss refinement ($\lambda_{\text{sobel}}=0.10$) $\rightarrow$ **28.22 dB**
-* **Phase 4 (Epochs 37–52):** Optimized multi-scale Sobel loss fine-tuning ($\lambda_{\text{sobel}}=0.15$) $\rightarrow$ **28.37 dB** (SSIM: **0.7736**)
+* **Phase 1 (Epochs 1–10):** Initial training from scratch (patch=64, lr=1e-3, $\lambda_{\text{ssim}}=0.20$) $\rightarrow$ **27.50 dB** (SSIM: **0.7442**)
+* **Phase 2 (Epochs 11–21):** Larger patch fine-tuning (patch=96, lr=3e-4, $\lambda_{\text{ssim}}=0.25$) $\rightarrow$ **27.87 dB** (SSIM: **0.7596**)
+* **Phase 3 (Epochs 22–36):** Edge-aware Sobel loss refinement ($\lambda_{\text{sobel}}=0.10$) $\rightarrow$ **28.22 dB** (SSIM: **0.7712**)
+* **Phase 4 Baseline (Epochs 37–52):** Optimized multi-scale Sobel loss fine-tuning ($\lambda_{\text{sobel}}=0.15$) $\rightarrow$ **28.37 dB** (SSIM: **0.7736**)
+* **Phase 5 Combined-Lever (Epochs 53–72):** Full patch=128, $\lambda_{\text{ssim}}=0.35$, $\lambda_{\text{sobel}}=0.15$ $\rightarrow$ **28.55 dB** (SSIM: **0.7800**)
+* **Hard-Weighted Tail Refinement + TTA:** Outlier 2.5x–3.5x oversampling, $\lambda_{\text{ssim}}=0.38$ + 8-Fold TTA $\rightarrow$ **28.63 dB** (SSIM: **0.7840**, Outlier SSIM: $+0.0073$)
 
 ### Visual Comparisons
 
@@ -190,19 +193,30 @@ Key training arguments:
 | `--val_ratio` | `0.1` | Fraction of data used for validation |
 | `--seed` | `42` | Random seed for reproducibility |
 
-### Inference (Test Set)
+### Official Submission Execution (KLA Standard)
 
 ```bash
-python evaluate.py --input_dir data/test/NoisyLR --output_dir restored_test --checkpoint checkpoints/best_model.pth --save_png
+python run.py <input-dir> <output-dir>
 ```
 
-This produces:
-- `restored_test/*.npy` — 400 restored float32 arrays (256×256)
-- `restored_test/png_previews/*.png` — visual preview images
+Example:
+```bash
+python run.py data/test/NoisyLR restored_test
+```
 
-### Generate Metrics Report
+Key features of `run.py`:
+- Reads all `.npy` degraded images from `<input-dir>`.
+- Generates corresponding restored `.npy` files in `<output-dir>` with identical filenames.
+- Outputs 2D grayscale float32 arrays `(256, 256)` bounded in `[0.0, 1.0]` with zero NaNs/Infs.
+- Automatically leverages 8-fold $D_4$ Dihedral Test-Time Augmentation (TTA) on GPU/CPU without internet access or manual configuration.
+
+### Extended Inference & Reports
 
 ```bash
+# Standalone evaluation script
+python evaluate.py --input_dir data/test/NoisyLR --output_dir restored_test --save_png --tta
+
+# Generate comprehensive visual comparison figures and metric reports
 python generate_report.py
 ```
 
@@ -213,42 +227,23 @@ Outputs to `visual_samples/`:
 
 ---
 
-## Training Details
-
-Training was conducted in two phases:
-
-| Setting | Phase 1 (From Scratch) | Phase 2 (Fine-Tuning) |
-|---------|----------------------|----------------------|
-| **Optimizer** | AdamW (lr=1e-3, wd=1e-4) | AdamW (lr=3e-4, wd=1e-4) |
-| **LR Schedule** | Cosine Annealing (T=10) | Cosine Annealing (T=10, restarted) |
-| **Loss** | 0.8 × Charbonnier + 0.2 × FastSSIM | 0.75 × Charbonnier + 0.25 × FastSSIM |
-| **Augmentation** | Random 64×64 patches, D4 group | Random 96×96 patches, D4 group |
-| **Epochs** | 1–10 | 11–20 |
-| **Batch Size** | 32 | 16 |
-| **Early Stopping** | — | Patience=6 on Val PSNR |
-| **Hardware** | CPU (Intel), ~49 min | CPU (Intel), ~120 min |
-| **Precision** | float32 | float32 |
-
----
-
 ## Reproducibility
 
 - All random seeds are fixed to **42** (Python, NumPy, PyTorch).
 - The validation split is saved to `checkpoints/val_filenames.json` for exact reproducibility.
-- **Caveat**: Exact bit-for-bit reproducibility across different hardware/GPU models cannot be guaranteed due to cuDNN non-determinism and floating-point ordering differences. Results should be very close but may differ at the least significant bits.
+- **Embedded Weights**: Model weights are included locally in both `models/best_model.pth` and `checkpoints/best_model.pth` (zero internet access required).
 
 ---
 
 ## Deliverables Checklist
 
-- [x] **README.md** — This file with architecture description, results, and usage
-- [x] **Training script** (`train.py`) — End-to-end training pipeline
-- [x] **Evaluation script** (`evaluate.py`) — Standalone inference on arbitrary `.npy` inputs
-- [x] **Model weights** (`checkpoints/best_model.pth`) — Trained checkpoint
-- [x] **Restored test outputs** (`restored_test/`) — 400 restored images
-- [x] **requirements.txt** — Python dependencies
-- [x] **Architecture/pipeline diagram** (`visual_samples/architecture_pipeline.png`)
-- [x] **Performance metrics** — PSNR=27.87 dB, SSIM=0.760, LPIPS=0.282 on validation set
+- [x] **run.py** — Official submission entrypoint (`python run.py <input-dir> <output-dir>`)
+- [x] **models/** — Model architecture (`models/restoration_net.py`) and embedded weights (`models/best_model.pth`)
+- [x] **requirements.txt** — Exact dependency specifications
+- [x] **README.md** — Complete documentation, architecture breakdown, and execution guide
+- [x] **checkpoints/** — Trained model weights (`checkpoints/best_model.pth`, `checkpoints/phase3_best_model.pth`)
+- [x] **restored_test/** — 400 restored test images (`.npy`) and visual previews (`.png`)
+- [x] **Validation Benchmarks** — PSNR = **28.63 dB**, SSIM = **0.7840**, LPIPS = **0.2593** (Baseline: 23.33 dB / 0.5564 SSIM)
 
 ---
 

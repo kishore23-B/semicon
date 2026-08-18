@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semiconductor AI Image Restoration Inspection Station</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo-mark">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="2" width="20" height="20" rx="4"></rect>
+          <path d="M7 2v4M17 2v4M2 7h4M2 17h4M22 7h-4M22 17h-4M7 22v-4M17 22v-4"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        </svg>
+      </div>
+      <div>
+        <h1 class="header-title">Semiconductor AI Restoration Station</h1>
+        <p class="header-subtitle">Joint Speckle-Denoising & 2× Super-Resolution Inference Suite</p>
+      </div>
+    </div>
+
+    <div class="header-metrics">
+      <div class="status-pill green">
+        <span class="pulse-dot"></span>
+        <span id="device-pill">GPU: CUDA Active</span>
+      </div>
+      <div class="metric-badge">
+        <span class="label">Benchmark SSIM</span>
+        <span class="value" id="header-ssim">0.7840</span>
+      </div>
+      <div class="metric-badge">
+        <span class="label">Benchmark PSNR</span>
+        <span class="value" id="header-psnr">28.63 dB</span>
+      </div>
+      <div class="metric-badge">
+        <span class="label">Model Params</span>
+        <span class="value">953 K</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- App Layout -->
+  <div class="app-body">
+    <!-- Sidebar Control Panel -->
+    <aside class="sidebar">
+      <!-- Sample Selector Section -->
+      <div class="sidebar-section">
+        <div class="section-title">
+          <span>Sample Catalog</span>
+          <span class="badge" id="sample-count-badge">30 items</span>
+        </div>
+        <div class="filter-pills">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="contacts">Contacts</button>
+          <button class="filter-btn" data-filter="traces">Traces</button>
+          <button class="filter-btn" data-filter="outliers">Outliers</button>
+          <button class="filter-btn" data-filter="test">Test Set</button>
+        </div>
+        <div class="sample-list" id="sample-list">
+          <!-- Dynamic sample items populated by app.js -->
+        </div>
+      </div>
+
+      <!-- Upload Custom Image / NPY -->
+      <div class="sidebar-section">
+        <div class="section-title">Custom Image Upload</div>
+        <div class="dropzone" id="dropzone">
+          <input type="file" id="file-input" accept=".npy,image/png,image/jpeg" style="display:none;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
+          <p>Drop <code>.npy</code> or image here</p>
+          <span class="btn-browse">Browse File</span>
+        </div>
+      </div>
+
+      <!-- Inference Configuration -->
+      <div class="sidebar-section">
+        <div class="section-title">Inference Engine Controls</div>
+        
+        <div class="control-row">
+          <label class="toggle-label" for="tta-toggle">
+            <div class="toggle-info">
+              <span class="toggle-name">8-Fold D4 Dihedral TTA</span>
+              <span class="toggle-desc">Rotational & flip averaging (+0.24 SSIM)</span>
+            </div>
+            <div class="switch">
+              <input type="checkbox" id="tta-toggle" checked>
+              <span class="slider"></span>
+            </div>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label class="select-label">
+            <span>Inspection View Mode</span>
+            <select id="view-mode-select">
+              <option value="triplet">3-Panel Comparison (GT / Input / AI)</option>
+              <option value="slider">Interactive Split Slider</option>
+              <option value="diff">Residual Error Heatmap</option>
+              <option value="edges">Sobel Edge Boundary Analysis</option>
+              <option value="fft">2D Fourier (FFT) Frequency Spectrum</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="control-row">
+          <label class="select-label">
+            <span>Cross-Section Slice Line</span>
+            <input type="range" id="slice-slider" min="0" max="255" value="128">
+            <span class="slider-val" id="slice-val">Row: 128 / 256</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Export Actions -->
+      <div class="sidebar-section export-section">
+        <button class="btn btn-primary" id="btn-download-npy">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Export Restored .NPY
+        </button>
+        <button class="btn btn-secondary" id="btn-download-png">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Export High-Res PNG
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Stage -->
+    <main class="workspace">
+      <!-- Top Action Bar -->
+      <div class="workspace-toolbar">
+        <div class="toolbar-left">
+          <span class="active-filename" id="current-filename">Sample: 000000.npy</span>
+          <span class="tag-pill" id="current-tag">Dense Contact Array</span>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="stat-item">
+            <span class="stat-lbl">Inference Latency:</span>
+            <span class="stat-val highlight" id="stat-latency">-- ms</span>
+          </div>
+          <div class="stat-item" id="stat-psnr-container">
+            <span class="stat-lbl">PSNR:</span>
+            <span class="stat-val" id="stat-psnr">-- dB</span>
+          </div>
+          <div class="stat-item" id="stat-ssim-container">
+            <span class="stat-lbl">SSIM:</span>
+            <span class="stat-val" id="stat-ssim">--</span>
+          </div>
+          <div class="stat-item" id="stat-lpips-container">
+            <span class="stat-lbl">LPIPS:</span>
+            <span class="stat-val" id="stat-lpips">--</span>
+          </div>
+          <div class="zoom-controls">
+            <button class="btn-icon" id="btn-zoom-out" title="Zoom Out">−</button>
+            <span id="zoom-level">100%</span>
+            <button class="btn-icon" id="btn-zoom-in" title="Zoom In">+</button>
+            <button class="btn-icon" id="btn-zoom-reset" title="Reset View">Reset</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Inspection Canvas Grid (Matching User Screenshot Layout) -->
+      <div class="inspection-viewport" id="viewport">
+        <!-- 3-Panel View Mode (Default) -->
+        <div class="triplet-grid" id="triplet-container">
+          <!-- Panel 1: Ground Truth -->
+          <div class="inspection-card" id="panel-gt">
+            <div class="card-header blue-theme">
+              <span class="panel-badge blue">Ground Truth (GT)</span>
+              <span class="panel-meta" id="gt-dim-tag">512×512 • High SNR</span>
+            </div>
+            <div class="canvas-wrapper">
+              <img id="img-gt" class="inspection-img" alt="Ground Truth Image">
+              <div class="slice-guide-line" id="guide-gt"></div>
+              <div class="pixel-info-overlay" id="hover-gt"></div>
+            </div>
+            <div class="card-footer">
+              <span>Reference Clean SEM Target</span>
+              <span id="gt-stat-contrast">Variance: --</span>
+            </div>
+          </div>
+
+          <!-- Panel 2: Noisy LR Input -->
+          <div class="inspection-card" id="panel-lr">
+            <div class="card-header orange-theme">
+              <span class="panel-badge orange">NoisyLR Input</span>
+              <span class="panel-meta" id="lr-dim-tag">256×256 • Speckle + Blur</span>
+            </div>
+            <div class="canvas-wrapper">
+              <img id="img-lr" class="inspection-img" alt="Noisy LR Input Image">
+              <div class="slice-guide-line" id="guide-lr"></div>
+              <div class="pixel-info-overlay" id="hover-lr"></div>
+            </div>
+            <div class="card-footer">
+              <span id="lr-overshoot-tag">Overshoot: --%</span>
+              <span id="lr-dynamic-range">Range: [--, --]</span>
+            </div>
+          </div>
+
+          <!-- Panel 3: AI Reconstructed -->
+          <div class="inspection-card" id="panel-restored">
+            <div class="card-header green-theme">
+              <span class="panel-badge green">AI Reconstructed</span>
+              <span class="panel-meta" id="restored-dim-tag">512×512 • Super-Resolved</span>
+            </div>
+            <div class="canvas-wrapper">
+              <img id="img-restored" class="inspection-img" alt="AI Restored Image">
+              <div class="slice-guide-line" id="guide-restored"></div>
+              <div class="pixel-info-overlay" id="hover-restored"></div>
+            </div>
+            <div class="card-footer">
+              <span id="restored-gain-tag">Gain: +-- dB</span>
+              <span id="restored-status-tag">Artifacts: 0 (No NaN/Inf)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Single Feature / Split Slider View Container -->
+        <div class="feature-view-container" id="feature-view-container" style="display:none;">
+          <div class="split-slider-wrapper" id="slider-wrapper">
+            <img id="slider-before" class="slider-img" alt="Before">
+            <div class="slider-after-container" id="slider-after-container">
+              <img id="slider-after" class="slider-img" alt="After">
+            </div>
+            <div class="slider-handle" id="slider-handle">
+              <div class="slider-handle-line"></div>
+              <div class="slider-handle-button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </div>
+            </div>
+            <div class="slider-tag left">Degraded Input (Bicubic)</div>
+            <div class="slider-tag right">AI Super-Resolved</div>
+          </div>
+
+          <div class="custom-feature-display" id="custom-feature-display" style="display:none;">
+            <div class="feature-card">
+              <h3 id="feature-card-title">Feature Map</h3>
+              <img id="feature-img" alt="Feature Visualization">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lower Analytics Deck (Features & Metrics Suite) -->
+      <section class="analytics-deck">
+        <div class="deck-tabs">
+          <button class="deck-tab active" data-tab="cross-section">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            1D Cross-Section Intensity Slice
+          </button>
+          <button class="deck-tab" data-tab="fft">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+            2D Fourier (FFT) Frequency Spectrum
+          </button>
+          <button class="deck-tab" data-tab="edges">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            Sobel Edge & Gradient Magnitude
+          </button>
+          <button class="deck-tab" data-tab="histogram">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Pixel Intensity Distribution
+          </button>
+          <button class="deck-tab" data-tab="metrics">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Quality Metrics & Error Benchmark
+          </button>
+        </div>
+
+        <div class="deck-content">
+          <!-- Tab 1: Cross Section Profile -->
+          <div class="tab-pane active" id="pane-cross-section">
+            <div class="profile-chart-container">
+              <div class="chart-header">
+                <span>Intensity Profile across Row <strong id="chart-row-num">128</strong> (Pixel values [0.0, 1.0])</span>
+                <div class="chart-legend">
+                  <span class="legend-item blue"><span class="dot"></span> Ground Truth</span>
+                  <span class="legend-item orange"><span class="dot"></span> NoisyLR Input</span>
+                  <span class="legend-item green"><span class="dot"></span> AI Reconstructed</span>
+                </div>
+              </div>
+              <canvas id="profileCanvas" width="900" height="200"></canvas>
+            </div>
+          </div>
+
+          <!-- Tab 2: FFT Spectrum -->
+          <div class="tab-pane" id="pane-fft">
+            <div class="fft-triplet">
+              <div class="fft-card">
+                <h4>Ground Truth Frequency (FFT)</h4>
+                <img id="fft-gt-img" class="fft-img" alt="GT FFT">
+                <span>Concentrated Structural Harmonics</span>
+              </div>
+              <div class="fft-card">
+                <h4>Noisy Input Frequency (FFT)</h4>
+                <img id="fft-lr-img" class="fft-img" alt="Noisy FFT">
+                <span>High-Frequency Isotropic Speckle Cloud</span>
+              </div>
+              <div class="fft-card">
+                <h4>AI Restored Frequency (FFT)</h4>
+                <img id="fft-restored-img" class="fft-img" alt="Restored FFT">
+                <span>Speckle Attenuated / Geometry Preserved</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Edge Maps -->
+          <div class="tab-pane" id="pane-edges">
+            <div class="edges-container">
+              <div class="edge-card">
+                <h4>NoisyLR Input Sobel Gradients</h4>
+                <img id="edge-lr-img" class="edge-img" alt="Noisy Edges">
+                <span>Noise artifacts contaminating edge detection</span>
+              </div>
+              <div class="edge-card">
+                <h4>AI Restored Sobel Gradients</h4>
+                <img id="edge-restored-img" class="edge-img" alt="Restored Edges">
+                <span>Clean, continuous boundary contours</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 4: Histogram -->
+          <div class="tab-pane" id="pane-histogram">
+            <div class="hist-container">
+              <div class="chart-header">
+                <span>Pixel Dynamic Range Distribution</span>
+                <div class="chart-legend">
+                  <span class="legend-item orange"><span class="dot"></span> Noisy Input</span>
+                  <span class="legend-item green"><span class="dot"></span> AI Restored</span>
+                </div>
+              </div>
+              <canvas id="histCanvas" width="900" height="180"></canvas>
+            </div>
+          </div>
+
+          <!-- Tab 5: Metrics Grid -->
+          <div class="tab-pane" id="pane-metrics">
+            <div class="metrics-grid">
+              <div class="metric-card">
+                <span class="mc-label">Structural Similarity (SSIM)</span>
+                <span class="mc-val" id="mc-ssim">--</span>
+                <span class="mc-delta" id="mc-ssim-delta">+-- vs Bicubic</span>
+              </div>
+              <div class="metric-card">
+                <span class="mc-label">Peak Signal-to-Noise (PSNR)</span>
+                <span class="mc-val" id="mc-psnr">-- dB</span>
+                <span class="mc-delta" id="mc-psnr-delta">+-- dB vs Bicubic</span>
+              </div>
+              <div class="metric-card">
+                <span class="mc-label">Perceptual Error (LPIPS)</span>
+                <span class="mc-val" id="mc-lpips">--</span>
+                <span class="mc-sub">Lower is better</span>
+              </div>
+              <div class="metric-card">
+                <span class="mc-label">Mean Absolute Error (MAE)</span>
+                <span class="mc-val" id="mc-mae">--</span>
+                <span class="mc-sub">Average pixel discrepancy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -10,12 +10,15 @@ Usage:
 """
 
 import os
+import sys
 import glob
 import time
 import argparse
 import numpy as np
 import torch
 from PIL import Image
+
+sys.path.insert(0, os.path.abspath("."))
 
 from models.restoration_net import SemiconductorRestorationNet
 
@@ -25,6 +28,7 @@ def restore_dataset(
     output_dir: str,
     checkpoint_path: str = "checkpoints/best_model.pth",
     save_png: bool = True,
+    use_tta: bool = False,
     device_str: str = None
 ):
     # Set up device
@@ -32,7 +36,7 @@ def restore_dataset(
         device = torch.device(device_str)
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"[*] Inference device: {device}")
+    print(f"[*] Inference device: {device} (TTA: {'Enabled (8-fold D4)' if use_tta else 'Disabled'})")
 
     # Verify input directory
     if not os.path.isdir(input_dir):
@@ -76,7 +80,26 @@ def restore_dataset(
 
             # Measure inference time
             t0 = time.perf_counter()
-            restored_tensor = model(lr_tensor)
+            if use_tta:
+                # 8-fold D4 Dihedral transforms
+                preds = []
+                for flip in [False, True]:
+                    for rot in [0, 1, 2, 3]:
+                        x = lr_tensor
+                        if flip:
+                            x = torch.flip(x, dims=[-1])
+                        if rot > 0:
+                            x = torch.rot90(x, k=rot, dims=[-2, -1])
+                        out = model(x)
+                        if rot > 0:
+                            out = torch.rot90(out, k=-rot, dims=[-2, -1])
+                        if flip:
+                            out = torch.flip(out, dims=[-1])
+                        preds.append(out)
+                restored_tensor = torch.mean(torch.stack(preds, dim=0), dim=0)
+            else:
+                restored_tensor = model(lr_tensor)
+
             if device.type == "cuda":
                 torch.cuda.synchronize()
             t_elapsed = (time.perf_counter() - t0) * 1000.0  # ms
@@ -84,6 +107,7 @@ def restore_dataset(
 
             # Convert to numpy array (H, W) in [0.0, 1.0]
             restored_arr = restored_tensor.squeeze().cpu().numpy().astype(np.float32)
+            restored_arr = np.clip(restored_arr, 0.0, 1.0)
 
             # Save restored .npy array
             out_npy_path = os.path.join(output_dir, fname)
@@ -140,6 +164,12 @@ def main():
         help="Disable saving PNG preview files"
     )
     parser.add_argument(
+        "--tta",
+        action="store_true",
+        default=False,
+        help="Enable 8-fold D4 Dihedral Test-Time Augmentation (TTA)"
+    )
+    parser.add_argument(
         "--device",
         type=str,
         default=None,
@@ -153,6 +183,7 @@ def main():
         output_dir=args.output_dir,
         checkpoint_path=args.checkpoint,
         save_png=args.save_png,
+        use_tta=args.tta,
         device_str=args.device
     )
 

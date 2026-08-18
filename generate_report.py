@@ -4,6 +4,7 @@ Computes PSNR, SSIM, LPIPS on the held-out validation set and creates visual fig
 """
 
 import os
+import sys
 import glob
 import time
 import json
@@ -12,6 +13,8 @@ import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from PIL import Image
+
+sys.path.insert(0, os.path.abspath("."))
 
 from models.restoration_net import SemiconductorRestorationNet, count_parameters
 from utils.metrics import calculate_psnr, calculate_ssim, calculate_lpips, LPIPSCalculator
@@ -263,7 +266,7 @@ def draw_architecture_diagram():
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Generate benchmark reports and visual comparisons")
-    parser.add_argument("--checkpoint", type=str, default="checkpoints/best_model_v4.pth", help="Path to checkpoint file")
+    parser.add_argument("--checkpoint", type=str, default="checkpoints/best_model.pth", help="Path to checkpoint file")
     parser.add_argument("--data_dir", type=str, default="data/train", help="Path to train data directory")
     parser.add_argument("--val_split", type=str, default="checkpoints/val_filenames.json", help="Path to validation split json")
     parser.add_argument("--device", type=str, default="cpu", help="Device for evaluation ('cpu' or 'cuda')")
