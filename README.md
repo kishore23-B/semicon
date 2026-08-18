@@ -105,7 +105,32 @@ All data are single-channel (grayscale) float32 NumPy arrays (`.npy`).
 
 ### Visual Comparisons
 
+Visual inspection comparison on representative semiconductor samples (`000048.npy`, `000064.npy`, `000095.npy`, `000214.npy`) comparing Degraded Input, Bicubic Baseline, RestorationNet Output, and Ground Truth:
+
 ![Visual Comparison](visual_samples/restoration_visual_comparison.png)
+
+#### Per-Sample Quality Breakdown (Samples 48, 64, 95, 214)
+
+| Sample Index | Filename | Degradation Type | Bicubic Baseline (PSNR / SSIM) | RestorationNet (PSNR / SSIM) | Net Improvement ($\Delta$) |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Sample 48** | `000048.npy` | Dense Contact Array + Speckle | `25.54 dB` / `0.7679` | **`30.78 dB`** / **`0.9073`** | **`+5.24 dB`** / **`+0.1393`** |
+| **Sample 64** | `000064.npy` | Micro-Pattern + High-Frequency Aliasing | `21.70 dB` / `0.4081` | **`29.48 dB`** / **`0.9110`** | **`+7.79 dB`** / **`+0.5030`** |
+| **Sample 95** | `000095.npy` | Interconnect Pitch + Grain Noise | `30.56 dB` / `0.7365` | **`35.76 dB`** / **`0.8698`** | **`+5.21 dB`** / **`+0.1333`** |
+| **Sample 214** | `000214.npy` | Substrate Boundary + Severe Noise | `25.18 dB` / `0.4444` | **`38.19 dB`** / **`0.9498`** | **`+13.01 dB`** / **`+0.5054`** |
+
+#### Individual Triplet Inspection Panels
+
+1. **Sample 48 (`000048.npy`) — Contact Array (PSNR: `30.78 dB`, SSIM: `0.9073`):**
+   ![Sample 48 Triplet](visual_samples/individual_samples/sample_000048_triplet_panel.png)
+
+2. **Sample 64 (`000064.npy`) — Micro-Pattern (PSNR: `29.48 dB`, SSIM: `0.9110`):**
+   ![Sample 64 Triplet](visual_samples/individual_samples/sample_000064_triplet_panel.png)
+
+3. **Sample 95 (`000095.npy`) — Interconnect Pitch (PSNR: `35.76 dB`, SSIM: `0.8698`):**
+   ![Sample 95 Triplet](visual_samples/individual_samples/sample_000095_triplet_panel.png)
+
+4. **Sample 214 (`000214.npy`) — Substrate Boundary (PSNR: `38.19 dB`, SSIM: `0.9498`):**
+   ![Sample 214 Triplet](visual_samples/individual_samples/sample_000214_triplet_panel.png)
 
 ---
 
@@ -250,5 +275,3 @@ Outputs to `visual_samples/`:
 ## License
 
 This project was developed as part of a semiconductor inspection hackathon.
-"# semicon_final" 
-"# semicon_final" 
