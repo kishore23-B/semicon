@@ -107,7 +107,7 @@ All data are single-channel (grayscale) float32 NumPy arrays (`.npy`).
 
 Visual inspection comparison on representative semiconductor samples (`000048.npy`, `000064.npy`, `000095.npy`, `000214.npy`) comparing Degraded Input, Bicubic Baseline, RestorationNet Output, and Ground Truth:
 
-![Visual Comparison](visual_samples/restoration_visual_comparison.png)
+![Visual Comparison](visual_samples/phott.png)
 
 #### Per-Sample Quality Breakdown (Samples 48, 64, 95, 214)
 
