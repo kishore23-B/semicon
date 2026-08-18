@@ -1,0 +1,23 @@
+﻿# Python & Environment
+.venv/
+env/
+venv/
+__pycache__/
+*.py[cod]
+*.class
+.ipynb_checkpoints/
+
+# Large Datasets & Archives (>100MB GitHub limit)
+data/
+*.zip
+train.zip
+Test_NoisyLR.zip
+
+# Large training checkpoints (keep best models, ignore 11MB latest_model.pth if desired)
+checkpoints/latest_model.pth
+
+# OS & IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
